@@ -26,6 +26,7 @@ class PluginResult:
     success: bool
     data: Optional[Dict[str, Any]] = None
     message: Optional[str] = None
+    plugin_name: Optional[str] = None
     should_continue: bool = True  # Whether to continue normal processing
 
 

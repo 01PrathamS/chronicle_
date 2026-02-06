@@ -7,6 +7,14 @@ import SimpleDebugPanel from '../components/audio/SimpleDebugPanel'
 
 export default function LiveRecord() {
   const recording = useRecording()
+  const speechTranscript = recording.transcript.filter(
+  segment => segment.source !== 'plugin'
+)
+
+const pluginTranscript = recording.transcript.filter(
+  segment => segment.source === 'plugin'
+)
+
 
   return (
     <div>
@@ -82,6 +90,63 @@ export default function LiveRecord() {
         isRecording={recording.isRecording}
         analyser={recording.analyser}
       />
+{/* Live Transcript */}
+<div className="mt-6">
+  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+    📝 Live Transcript
+  </h3>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {/* 🎤 Speech Transcript */}
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+      <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+        🎤 Speech
+      </h4>
+
+      <div className="text-sm space-y-2 max-h-64 overflow-y-auto">
+        {speechTranscript.length === 0 ? (
+          <p className="italic text-gray-500 dark:text-gray-400">
+            {recording.isRecording
+              ? 'Listening...'
+              : 'No speech transcript'}
+          </p>
+        ) : (
+          speechTranscript.map((segment, index) => (
+            <p key={index}>{segment.text}</p>
+          ))
+        )}
+      </div>
+    </div>
+
+    {/* 🔌 Plugin Output */}
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+      <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+        🔌 Plugin
+      </h4>
+
+      <div className="text-sm space-y-2 max-h-64 overflow-y-auto">
+        {pluginTranscript.length === 0 ? (
+          <p className="italic text-gray-500 dark:text-gray-400">
+            No plugin output
+          </p>
+        ) : (
+          pluginTranscript.map((segment, index) => (
+            <p key={index}>
+              {segment.plugin && (
+                <span className="font-semibold mr-1">
+                  [{segment.plugin}]
+                </span>
+              )}
+              {segment.text}
+            </p>
+          ))
+        )}
+      </div>
+    </div>
+  </div>
+</div>
+
+
 
       {/* Instructions */}
       <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -101,6 +166,8 @@ export default function LiveRecord() {
           <li>• <strong>Wyoming protocol:</strong> Structured communication ensures reliable data transmission</li>
           <li>• <strong>High quality audio:</strong> 16kHz mono with noise suppression and echo cancellation</li>
           <li>• <strong>View results:</strong> Check Conversations page for transcribed content and memories</li>
+          <li>• <strong>SavaliyaPratham:</strong> Check Conversations page for transcribed content and memories</li>
+
         </ul>
       </div>
 

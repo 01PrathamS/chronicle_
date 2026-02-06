@@ -205,15 +205,16 @@ class StreamingTranscriptionConsumer:
                 await self.publish_to_client(session_id, result, is_final=is_final)
 
                 # If final result, also store and trigger plugins
+                # if is_final:
+                logger.info(
+                    f"🔤 TRANSCRIPT [STORE] session={session_id}, words={word_count}, text=\"{text}\""
+                )
+                # if self.plugin_router and not is_final:
+                plugin_result = await self.trigger_plugins(session_id, result)
+                await self.publish_to_client(session_id, plugin_result, is_final=False)
                 if is_final:
-                    logger.info(
-                        f"🔤 TRANSCRIPT [STORE] session={session_id}, words={word_count}, text=\"{text}\""
-                    )
                     await self.store_final_result(session_id, result, chunk_id=chunk_id)
 
-                    # Trigger plugins on final results only
-                    if self.plugin_router:
-                        await self.trigger_plugins(session_id, result)
 
         except Exception as e:
             logger.error(f"Error processing audio chunk for {session_id}: {e}", exc_info=True)
@@ -374,8 +375,12 @@ class StreamingTranscriptionConsumer:
                 'words': result.get("words", []),
                 'segments': result.get("segments", []),
                 'confidence': result.get("confidence", 0.0),
-                'is_final': True
+                'is_final': False, 
+                'is_streaming': True
             }
+
+            if len(plugin_data["transcript"]) < 5: 
+                return 
 
             # Dispatch transcript.streaming event
             logger.info(f"🎯 Dispatching transcript.streaming event for user {user_id}, transcript: {plugin_data['transcript'][:50]}...")
@@ -386,6 +391,25 @@ class StreamingTranscriptionConsumer:
                 data=plugin_data,
                 metadata={'client_id': session_id}
             )
+            logger.info("ℹ️ℹ️ℹ️ℹ️ℹ️ℹ️ℹ️ℹ️ℹ️ℹ️ℹ️ℹ️ℹ️ℹ️ℹ️")
+            logger.info(plugin_results)
+
+            if plugin_results:
+                channel = f"transcription:interim:{session_id}"
+
+                for result in plugin_results:
+                    await self.redis_client.publish(
+                        channel,
+                        json.dumps({
+                            "text": result.message,
+                            "is_final": False,
+                            "source": "plugin",
+                            "plugin": result.plugin_name if hasattr(result, "plugin_name") else "keepbookread",
+                            "timestamp": time.time(), 
+                            "is_streaming": True, 
+                        })
+                    )
+                logger.info("ℹ️send this to inteface hahahahℹ️")
 
             if plugin_results:
                 logger.info(f"✅ Plugins triggered successfully: {len(plugin_results)} results")

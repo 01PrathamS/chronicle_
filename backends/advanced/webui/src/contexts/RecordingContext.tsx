@@ -35,9 +35,20 @@ export interface RecordingContextType {
   // Utilities
   formatDuration: (seconds: number) => string
   canAccessMicrophone: boolean
+
+  transcript: TranscriptSegment[] 
 }
 
 const RecordingContext = createContext<RecordingContextType | undefined>(undefined)
+
+export interface TranscriptSegment {
+  text: string
+  confidence?: number
+  timestamp?: number
+  source?: 'plugin' | 'speech'
+  plugin?: string
+}
+
 
 export function RecordingProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
@@ -59,6 +70,8 @@ export function RecordingProvider({ children }: { children: ReactNode }) {
     sessionStartTime: null,
     connectionAttempts: 0
   })
+  const [transcript, setTranscript] = useState<TranscriptSegment[]>([])
+
 
   // Refs for direct access
   const wsRef = useRef<WebSocket | null>(null)
@@ -279,9 +292,32 @@ export function RecordingProvider({ children }: { children: ReactNode }) {
           }
 
           // Handle other message types (interim_transcript, etc.)
+          // else if (message.type === 'interim_transcript') {
+          //   console.log('📝 Received interim transcript:', message.data)
+          // }
+
           else if (message.type === 'interim_transcript') {
             console.log('📝 Received interim transcript:', message.data)
+
+            // ✅ Allow plugin messages
+            if (
+              (message.data?.is_final || message.data?.source === 'plugin') &&
+              message.data.text
+            ) {
+              setTranscript(prev => [
+                ...prev,
+                {
+                  text: message.data.text,
+                  confidence: message.data.confidence,
+                  timestamp: message.data.timestamp,
+                  source: message.data.source,
+                  plugin: message.data.plugin
+                }
+              ])
+            }
           }
+
+
 
         } catch (e) {
           // Not JSON, ignore
@@ -440,7 +476,7 @@ export function RecordingProvider({ children }: { children: ReactNode }) {
     try {
       setError(null)
       setCurrentStep('mic')
-
+      setTranscript([])
       // Step 1: Get microphone access
       const stream = await getMicrophoneAccess()
 
@@ -554,7 +590,8 @@ export function RecordingProvider({ children }: { children: ReactNode }) {
       analyser: analyserState,
       debugStats,
       formatDuration,
-      canAccessMicrophone
+      canAccessMicrophone, 
+      transcript
     }}>
       {children}
     </RecordingContext.Provider>
